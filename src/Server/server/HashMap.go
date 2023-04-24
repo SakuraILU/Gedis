@@ -1,10 +1,7 @@
 package server
 
 import (
-	"errors"
 	"fmt"
-	"hash"
-	"hash/fnv"
 	"sort"
 	"sync"
 )
@@ -19,17 +16,14 @@ type value struct {
 }
 
 type HashMap struct {
-	maps   []kvMap
-	size   uint32
-	lock   sync.RWMutex
-	hasher hash.Hash32
+	maps []kvMap
+	size uint32
 }
 
 func NewHashMap(size uint32) *HashMap {
 	hashmap := &HashMap{
-		maps:   make([]kvMap, size),
-		size:   size,
-		hasher: fnv.New32(),
+		maps: make([]kvMap, size),
+		size: size,
 	}
 	for i := 0; i < int(size); i++ {
 		hashmap.maps[i].Kvs = make(map[string]value)
@@ -42,7 +36,7 @@ func (this *HashMap) Get(key string) (interface{}, error) {
 	val, ok := this.maps[idx].Kvs[key]
 	var err error
 	if !ok {
-		err = errors.New(fmt.Sprintf("key %s is not found", key))
+		err = fmt.Errorf("key %s is not found", key)
 	}
 	return val.Data, err
 }
@@ -56,7 +50,7 @@ func (this *HashMap) Del(key string) (err error) {
 	idx := this.key2idx(key)
 	_, ok := this.maps[idx].Kvs[key]
 	if !ok {
-		err = errors.New(fmt.Sprintf("key %s is not found", key))
+		err = fmt.Errorf("key %s is not found", key)
 		return
 	}
 	delete(this.maps[idx].Kvs, key)

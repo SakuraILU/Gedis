@@ -24,7 +24,7 @@ func (this *DataPack) PackMsg(msg [][]byte) {
 func (this *DataPack) packArray(msg [][]byte) {
 	num := len(msg)
 	str := fmt.Sprintf("*%d%s", num, this.eof)
-	fmt.Printf(str)
+	// fmt.Printf(str)
 	this.conn.Write([]byte(str))
 	for i := 0; i < num; i++ {
 		this.packBinary(msg[i])
@@ -37,9 +37,9 @@ func (this *DataPack) packBinary(elem []byte) {
 	this.conn.Write([]byte(str))
 	this.conn.Write(elem)
 	this.conn.Write([]byte(this.eof))
-	fmt.Printf(str)
-	fmt.Printf(string(elem))
-	fmt.Printf(this.eof)
+	// fmt.Printf(str)
+	// fmt.Printf(string(elem))
+	// fmt.Printf(this.eof)
 }
 
 func (this *DataPack) UnpackMsg() [][]byte {
