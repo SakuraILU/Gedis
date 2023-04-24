@@ -96,13 +96,16 @@ func TestDb3(t *testing.T) {
 			db.Set(cmds[i][1:])
 			wg.Done()
 		}(i)
-
-	}
-	for i := num_remain; i < num; i++ {
-		go func(i int) {
-			db.Del(delCmds[i][1:])
-			wg.Done()
-		}(i)
+		if i >= num_remain {
+			go func(i int) {
+				for {
+					if err := db.Del(delCmds[i][1:]); err == nil {
+						break
+					}
+				}
+				wg.Done()
+			}(i)
+		}
 	}
 	wg.Wait()
 	// 检查0～num_remain-1的key是否存在
@@ -113,6 +116,14 @@ func TestDb3(t *testing.T) {
 			t.Error("TestDb3 failed")
 		}
 		if val.(string) != "value"+strconv.Itoa(i) {
+			t.Error("TestDb3 failed")
+		}
+	}
+	// 检查num_remain～num-1的key是否不存在
+	for i := num_remain; i < num; i++ {
+		cmd := [][]byte{[]byte("GET"), []byte("key" + strconv.Itoa(i))}
+		_, err := db.Get(cmd[1:])
+		if err == nil {
 			t.Error("TestDb3 failed")
 		}
 	}
