@@ -2,8 +2,10 @@ package server
 
 import (
 	"fmt"
+	"math"
 	"sort"
 	"sync"
+	"time"
 )
 
 type kvMap struct {
@@ -12,18 +14,22 @@ type kvMap struct {
 }
 
 type value struct {
-	Data interface{}
+	Data  interface{}
+	TTLat int64
 }
 
 type HashMap struct {
 	maps []kvMap
 	size uint32
+
+	ttl_check_time uint32
 }
 
 func NewHashMap(size uint32) *HashMap {
 	hashmap := &HashMap{
-		maps: make([]kvMap, size),
-		size: size,
+		maps:           make([]kvMap, size),
+		size:           size,
+		ttl_check_time: 5,
 	}
 	for i := 0; i < int(size); i++ {
 		hashmap.maps[i].Kvs = make(map[string]value)
@@ -38,19 +44,28 @@ func (this *HashMap) Get(key string) (interface{}, error) {
 	if !ok {
 		err = fmt.Errorf("key %s is not found", key)
 	}
+	if time.Now().Unix() > val.TTLat {
+		err = fmt.Errorf("key %s is not found", key)
+		delete(this.maps[idx].Kvs, key)
+	}
 	return val.Data, err
 }
 
 func (this *HashMap) Put(key string, val interface{}) {
 	idx := this.key2idx(key)
-	this.maps[idx].Kvs[key] = value{Data: val}
+	this.maps[idx].Kvs[key] = value{Data: val, TTLat: math.MaxInt64}
 }
 
 func (this *HashMap) Del(key string) (err error) {
 	idx := this.key2idx(key)
-	_, ok := this.maps[idx].Kvs[key]
+	val, ok := this.maps[idx].Kvs[key]
 	if !ok {
 		err = fmt.Errorf("key %s is not found", key)
+		return
+	}
+	if time.Now().Unix() > val.TTLat {
+		err = fmt.Errorf("key %s is not found", key)
+		delete(this.maps[idx].Kvs, key)
 		return
 	}
 	delete(this.maps[idx].Kvs, key)
@@ -140,4 +155,56 @@ func (this *HashMap) key2idx(key string) uint32 {
 		code = code*31 + uint32(ch)
 	}
 	return code % this.size
+}
+
+func (this *HashMap) SetTTL(key string, ttl int64) (err error) {
+	idx := this.key2idx(key)
+	val, ok := this.maps[idx].Kvs[key]
+	if !ok {
+		err = fmt.Errorf("key %s is not found", key)
+		return
+	}
+	if time.Now().Unix() > val.TTLat {
+		err = fmt.Errorf("key %s is not found", key)
+		delete(this.maps[idx].Kvs, key)
+		return
+	}
+
+	val.TTLat = time.Now().Unix() + ttl
+	this.maps[idx].Kvs[key] = val
+	return
+}
+
+func (this *HashMap) GetTTL(key string) (ttl int64, err error) {
+	idx := this.key2idx(key)
+	val, ok := this.maps[idx].Kvs[key]
+	if !ok {
+		err = fmt.Errorf("key %s is not found", key)
+		return
+	}
+	if time.Now().Unix() > val.TTLat {
+		err = fmt.Errorf("key %s is not found", key)
+		delete(this.maps[idx].Kvs, key)
+		return
+	}
+	ttl = val.TTLat - time.Now().Unix()
+	return
+}
+
+func (this *HashMap) TtlMonitor() {
+	ticker := time.Tick(time.Duration(this.ttl_check_time) * time.Second)
+	for {
+		select {
+		case <-ticker:
+			for i := 0; i < int(this.size); i++ {
+				this.maps[i].Lock.Lock()
+				for k, v := range this.maps[i].Kvs {
+					if time.Now().Unix() > v.TTLat {
+						delete(this.maps[i].Kvs, k)
+					}
+				}
+				this.maps[i].Lock.Unlock()
+			}
+		}
+	}
 }

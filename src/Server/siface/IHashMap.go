@@ -8,4 +8,8 @@ type IHashMap interface {
 	Unlock(key string, write bool)
 	Locks(keys []string, write bool)
 	Unlocks(keys []string, write bool)
+
+	SetTTL(key string, time int64) error
+	GetTTL(key string) (int64, error)
+	TtlMonitor()
 }

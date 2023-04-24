@@ -2,6 +2,7 @@ package server_test
 
 import (
 	"gedis/src/Server/server"
+	"gedis/src/zinx/znet"
 	"math/rand"
 	"net"
 	"strconv"
@@ -13,7 +14,7 @@ import (
 var wg sync.WaitGroup
 
 func startServer(cmds [][][]byte) {
-	// 简单的tcp server, 用于测试DataPack.go
+	// 简单的tcp server, 用于测试CmdPack.go
 	// 1. 监听端口
 	listener, err := net.Listen("tcp", "127.0.0.1:8888")
 	if err != nil {
@@ -25,12 +26,29 @@ func startServer(cmds [][][]byte) {
 	if err != nil {
 		panic(err.Error())
 	}
-	// 3. 使用Datapack中的UnpackMsg读取客户端数据
-	receiver := server.NewDataPack(conn)
+	msg_pack := znet.NewDataPack()
+	cmd_pack := server.NewCmdPack()
 	for _, cmd := range cmds {
-		msg := receiver.UnpackMsg()
+		// 3. 读取客户端数据
+		header := make([]byte, msg_pack.GetHeadLen())
+		_, err := conn.Read(header)
+		if err != nil {
+			panic(err.Error())
+		}
+		// 4. 解包msg
+		msg, err := msg_pack.UnpackHead(header)
+		if err != nil {
+			panic(err.Error())
+		}
+		// 5. 读取数据
+		_, err = conn.Read(msg.GetMsgData())
+		if err != nil {
+			panic(err.Error())
+		}
+		// 6. 解包msg的data里的cmd
+		cmds_unpacked := cmd_pack.UnpackCmd(msg.GetMsgData())
 		// assert msg == cmd
-		for i, v := range msg {
+		for i, v := range cmds_unpacked {
 			if string(v) != string(cmd[i]) {
 				panic("msg != cmd")
 			}
@@ -45,8 +63,18 @@ func startclient(cmds [][][]byte) {
 		panic(err.Error())
 	}
 	// 使用Datapack中的PackMsg打包数据
+	msg_pack := znet.NewDataPack()
+	cmd_pack := server.NewCmdPack()
 	for _, cmd := range cmds {
-		server.NewDataPack(conn).PackMsg(cmd)
+		// 1. 打包cmd
+		cmd_packed := cmd_pack.PackCmd(cmd)
+		// 2. 打包msg
+		msg := znet.NewMessage(0, cmd_packed)
+		msg_packed, err := msg_pack.Pack(msg)
+		if err != nil {
+			panic(err.Error())
+		}
+		conn.Write(msg_packed)
 		// 稍微等待一下，否则数据过多可能socket会丢失？cmds较多时加上1ms延迟就正确了
 		time.Sleep(time.Millisecond * 1)
 	}
