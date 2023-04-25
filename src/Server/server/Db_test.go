@@ -10,7 +10,7 @@ import (
 // single goroutine Set/GET/DEL test
 func TestDb(t *testing.T) {
 	db := server.NewDb("test")
-	db.Open("")
+	db.Open()
 	// SET command
 	cmd := [][]byte{[]byte("SET"), []byte("key"), []byte("value")}
 	db.Set(cmd[1:])
@@ -53,7 +53,7 @@ func TestDb2(t *testing.T) {
 
 	// 多个goroutine并发SET/GET
 	db := server.NewDb("test")
-	db.Open("")
+	db.Open()
 	for i := 0; i < num; i++ {
 		go db.Set(cmds[i][1:])
 		go func(i int) {
@@ -87,7 +87,7 @@ func TestDb3(t *testing.T) {
 
 	// 多个goroutine并发SET/DEL
 	db := server.NewDb("test")
-	db.Open("")
+	db.Open()
 
 	wg := sync.WaitGroup{}
 	wg.Add(num + (num - num_remain))

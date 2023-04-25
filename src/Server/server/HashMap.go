@@ -3,6 +3,7 @@ package server
 import (
 	"fmt"
 	"math"
+	"path/filepath"
 	"sort"
 	"sync"
 	"time"
@@ -35,6 +36,14 @@ func NewHashMap(size uint32) *HashMap {
 		hashmap.maps[i].Kvs = make(map[string]value)
 	}
 	return hashmap
+}
+
+func (this *HashMap) key2idx(key string) uint32 {
+	var code uint32 = 1
+	for _, ch := range key {
+		code = code*31 + uint32(ch)
+	}
+	return code % this.size
 }
 
 func (this *HashMap) Get(key string) (interface{}, error) {
@@ -149,14 +158,6 @@ func (this *HashMap) Unlocks(keys []string, write bool) {
 	}
 }
 
-func (this *HashMap) key2idx(key string) uint32 {
-	var code uint32 = 1
-	for _, ch := range key {
-		code = code*31 + uint32(ch)
-	}
-	return code % this.size
-}
-
 func (this *HashMap) SetTTL(key string, ttl int64) (err error) {
 	idx := this.key2idx(key)
 	val, ok := this.maps[idx].Kvs[key]
@@ -191,6 +192,23 @@ func (this *HashMap) GetTTL(key string) (ttl int64, err error) {
 	return
 }
 
+func (this *HashMap) Persist(key string) (err error) {
+	idx := this.key2idx(key)
+	val, ok := this.maps[idx].Kvs[key]
+	if !ok {
+		err = fmt.Errorf("key %s is not found", key)
+		return
+	}
+	if time.Now().Unix() > val.TTLat {
+		err = fmt.Errorf("key %s is not found", key)
+		delete(this.maps[idx].Kvs, key)
+		return
+	}
+	val.TTLat = math.MaxInt64
+	this.maps[idx].Kvs[key] = val
+	return
+}
+
 func (this *HashMap) TtlMonitor() {
 	ticker := time.Tick(time.Duration(this.ttl_check_time) * time.Second)
 	for {
@@ -207,4 +225,20 @@ func (this *HashMap) TtlMonitor() {
 			}
 		}
 	}
+}
+
+func (this *HashMap) FindWithLock(pattern string) (keys []string, err error) {
+	for idx := 0; idx < int(this.size); idx++ {
+		this.maps[idx].Lock.RLock()
+		for k, v := range this.maps[idx].Kvs {
+			if time.Now().Unix() > v.TTLat {
+				continue // use RLock...so can't delete this key, just ignore
+			}
+			if ismatch, _ := filepath.Match(pattern, k); ismatch {
+				keys = append(keys, k)
+			}
+		}
+		this.maps[idx].Lock.RUnlock()
+	}
+	return
 }

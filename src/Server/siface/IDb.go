@@ -1,7 +1,7 @@
 package siface
 
 type IDb interface {
-	Open(string) error
+	Open() error
 	Close() error
 	Set([][]byte) error
 	Get([][]byte) (interface{}, error)
@@ -9,4 +9,6 @@ type IDb interface {
 	Mset([][]byte) error
 	Expire([][]byte) error
 	TTL([][]byte) (int64, error)
+	Keys([][]byte) ([]string, error)
+	Persist([][]byte) error
 }

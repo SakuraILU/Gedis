@@ -62,6 +62,11 @@ func (this *SetRouter) Handle(req ziface.IRequest) {
 			resp = this.cmd_packer.PackCmd([][]byte{[]byte(err.Error())})
 		}
 		conn.SendMsg(0, resp)
+	case "PERSIST":
+		if err := db.Persist(args); err != nil {
+			resp = this.cmd_packer.PackCmd([][]byte{[]byte(err.Error())})
+		}
+		conn.SendMsg(0, resp)
 	case "TTL":
 		ttl, err := db.TTL(args)
 		if err != nil {
@@ -70,6 +75,23 @@ func (this *SetRouter) Handle(req ziface.IRequest) {
 			sttl := fmt.Sprint(ttl)
 			resp = this.cmd_packer.PackCmd([][]byte{[]byte(sttl)})
 		}
+		conn.SendMsg(0, resp)
+	case "KEYS":
+		keys, err := db.Keys(args)
+		if err != nil {
+			resp = this.cmd_packer.PackCmd([][]byte{[]byte(err.Error())})
+		} else if len(keys) == 0 {
+			resp = this.cmd_packer.PackCmd([][]byte{[]byte("empty array")})
+		} else {
+			buf := make([][]byte, 0)
+			for _, key := range keys {
+				buf = append(buf, []byte(key))
+			}
+			resp = this.cmd_packer.PackCmd(buf)
+		}
+		conn.SendMsg(0, resp)
+	default:
+		resp = this.cmd_packer.PackCmd([][]byte{[]byte("Unspported command")})
 		conn.SendMsg(0, resp)
 	}
 }

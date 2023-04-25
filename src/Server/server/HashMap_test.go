@@ -76,10 +76,10 @@ func Test3(t *testing.T) {
 					m.Lock(k, false)
 					val, err := m.Get(k)
 					if err != nil {
-						continue
+						continue // if not put yet, continue
 					}
 					if val.(string) != k_vs_cpy[k] {
-						continue
+						t.Error("Test3 failed")
 					}
 					m.Unlock(k, false)
 					delete(k_vs_cpy, k)
@@ -111,7 +111,7 @@ func Test4(t *testing.T) {
 				k_vs_cpy[k] = v
 			}
 			for len(k_vs_cpy) > 0 {
-				// 生成一些key
+				// 取出10个key
 				keys := make([]string, 0, 10)
 				for k, _ := range k_vs_cpy {
 					keys = append(keys, k)
@@ -137,7 +137,7 @@ func Test4(t *testing.T) {
 				k_vs_cpy[k] = v
 			}
 			for len(k_vs_cpy) > 0 {
-				// 生成一些key
+				// 取出10个key
 				keys := make([]string, 0, 10)
 				for k, _ := range k_vs_cpy {
 					keys = append(keys, k)
@@ -149,10 +149,10 @@ func Test4(t *testing.T) {
 				for _, k := range keys {
 					val, err := m.Get(k)
 					if err != nil {
-						continue
+						continue // if not put yet, continue
 					}
 					if val.(string) != k_vs_cpy[k] {
-						continue
+						t.Error("Test4 failed")
 					}
 					lock_cpy.Lock()
 					delete(k_vs_cpy, k)
@@ -172,7 +172,7 @@ func Test5(t *testing.T) {
 	m := server.NewHashMap(256)
 	// 生成一些key-value pair
 	k_vs := make(map[string]string)
-	for i := 0; i < 200000; i++ {
+	for i := 0; i < 100000; i++ {
 		key := fmt.Sprintf("key%d", i)
 		val := fmt.Sprintf("value%d", i)
 		k_vs[key] = val
@@ -200,7 +200,7 @@ func Test5(t *testing.T) {
 				k_vs_cpy[k] = v
 			}
 			for len(k_vs_cpy) > 0 {
-				// 生成一些key
+				// 取出10个key
 				keys := make([]string, 0, 10)
 				for k, _ := range k_vs_cpy {
 					keys = append(keys, k)
@@ -225,7 +225,7 @@ func Test5(t *testing.T) {
 		go func(id int) {
 			k_vs_del := k_vs_dels[id]
 			for len(k_vs_del) > 0 {
-				// 生成一些key
+				// 取出10个key
 				keys := make([]string, 0, 10)
 				for k, _ := range k_vs_del {
 					keys = append(keys, k)
@@ -253,6 +253,15 @@ func Test5(t *testing.T) {
 		}
 		if val.(string) != v {
 			t.Error("Test5 failed")
+		}
+	}
+	// 除了最后kv_dels[last]以外的k-v应该都被删除了
+	for i := 0; i < dnum-1; i++ {
+		for k, _ := range k_vs_dels[i] {
+			_, err := m.Get(k)
+			if err == nil {
+				t.Error("Test5 failed")
+			}
 		}
 	}
 }

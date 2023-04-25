@@ -18,7 +18,7 @@ func NewDb(name string) *Db {
 	}
 }
 
-func (this *Db) Open(string) error {
+func (this *Db) Open() error {
 	go this.hashmap.TtlMonitor()
 	return nil
 }
@@ -58,16 +58,25 @@ func (this *Db) Get(args [][]byte) (val interface{}, err error) {
 }
 
 func (this *Db) Del(args [][]byte) (err error) {
-	if len(args) != 1 {
+	if len(args) < 1 {
 		err = fmt.Errorf("(error) ERR wrong number of arguments for 'del' command")
 		return
 	}
 
-	key := string(args[0])
-	this.hashmap.Lock(key, true)
-	defer this.hashmap.Unlock(key, true)
-	err = this.hashmap.Del(key)
+	keys := make([]string, 0)
+	for _, key := range args {
+		keys = append(keys, string(key))
+	}
+	this.hashmap.Locks(keys, true)
+	defer this.hashmap.Unlocks(keys, true)
 
+	dnum := 0 // how many keys are deleted successfully
+	for _, key := range keys {
+		if err = this.hashmap.Del(key); err == nil {
+			dnum++
+		}
+	}
+	err = fmt.Errorf("%d", dnum)
 	return
 }
 
@@ -112,6 +121,19 @@ func (this *Db) Expire(args [][]byte) (err error) {
 	return
 }
 
+func (this *Db) Persist(args [][]byte) (err error) {
+	if len(args) != 1 {
+		err = fmt.Errorf("(error) ERR wrong number of arguments for 'persist' command")
+		return
+	}
+	key := string(args[0])
+
+	this.hashmap.Lock(key, true)
+	defer this.hashmap.Unlock(key, true)
+	err = this.hashmap.Persist(key)
+	return
+}
+
 func (this *Db) TTL(args [][]byte) (ttl int64, err error) {
 	if len(args) != 1 {
 		err = fmt.Errorf("(error) ERR wrong number of arguments for 'ttl' command")
@@ -122,5 +144,15 @@ func (this *Db) TTL(args [][]byte) (ttl int64, err error) {
 	this.hashmap.Lock(key, false)
 	defer this.hashmap.Unlock(key, false)
 	ttl, err = this.hashmap.GetTTL(key)
+	return
+}
+
+func (this *Db) Keys(args [][]byte) (keys []string, err error) {
+	if len(args) != 1 {
+		err = fmt.Errorf("(error) ERR wrong number of arguments for 'keys' command")
+		return
+	}
+	pattern := string(args[0])
+	keys, err = this.hashmap.FindWithLock(pattern)
 	return
 }

@@ -7,17 +7,20 @@ import (
 	"gedis/src/zinx/znet"
 	"net"
 	"os"
+	"strconv"
 	"strings"
 )
 
-var prompt = "Gedis> "
-var validCmds = []string{"SET", "GET", "DEL", "MSET", "EXPIRE", "TTL"}
+var prompt = "Gedis"
+var validCmds = []string{"SET", "GET", "DEL", "MSET", "EXPIRE", "TTL", "KEYS", "PERSIST"}
+var validDbCmds = []string{"SELECT"}
 
 func reader(conn net.Conn) {
 	msg_packer := znet.NewDataPack()
 	cmd_packer := server.NewCmdPack()
+	db_id := 0
 	for {
-		fmt.Printf("%s", prompt)
+		fmt.Printf("%s[%d]> ", prompt, db_id)
 		buf := make([]byte, msg_packer.GetHeadLen())
 		_, err := conn.Read(buf)
 		if err != nil {
@@ -33,10 +36,14 @@ func reader(conn net.Conn) {
 		}
 		cmd_packed := msg.GetMsgData()
 		cmds := cmd_packer.UnpackCmd(cmd_packed)
-		for _, v := range cmds {
-			fmt.Printf("\"%s\" ", v)
+		if msg.GetMsgID() == 1 {
+			db_id, err = strconv.Atoi(string(cmds[0]))
+			fmt.Printf("\"OK\"\n")
+		} else {
+			for _, v := range cmds {
+				fmt.Printf("\"%s\"\n", v)
+			}
 		}
-		fmt.Println()
 	}
 }
 
@@ -46,10 +53,14 @@ func writer(conn net.Conn) {
 
 	for {
 		cmd := parseCmd()
-		if string(cmd[0]) == "exit" {
+		// convert cmd[0] to upper case
+		cmd[0] = []byte(strings.ToUpper(string(cmd[0])))
+		// 退出
+		if string(cmd[0]) == "EXIT" {
 			break
 		}
 		// 检查命令是否合法, 在validCmds中
+		msg_id := 0
 		valid := false
 		for _, v := range validCmds {
 			if string(cmd[0]) == v {
@@ -58,12 +69,21 @@ func writer(conn net.Conn) {
 			}
 		}
 		if !valid {
+			for _, v := range validDbCmds {
+				if string(cmd[0]) == v {
+					valid = true
+					msg_id = 1
+					break
+				}
+			}
+		}
+		if !valid {
 			fmt.Printf("invalid command: %s\n", cmd[0])
 			fmt.Printf("%s", prompt)
 			continue
 		}
 		cmd_packed := cmd_packer.PackCmd(cmd)
-		msg := znet.NewMessage(0, cmd_packed)
+		msg := znet.NewMessage(uint32(msg_id), cmd_packed)
 		msg_packed, err := msg_packer.Pack(msg)
 		if err != nil {
 			panic(err.Error())

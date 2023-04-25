@@ -11,5 +11,8 @@ type IHashMap interface {
 
 	SetTTL(key string, time int64) error
 	GetTTL(key string) (int64, error)
+	Persist(key string) error
 	TtlMonitor()
+
+	FindWithLock(pattern string) (keys []string, err error)
 }
