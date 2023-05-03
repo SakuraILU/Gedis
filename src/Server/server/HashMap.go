@@ -23,15 +23,19 @@ type HashMap struct {
 	maps []kvMap
 	size uint32
 
+	exit_chan      chan bool
 	ttl_check_time uint32
 }
 
 func NewHashMap(size uint32) *HashMap {
 	hashmap := &HashMap{
-		maps:           make([]kvMap, size),
-		size:           size,
+		maps: make([]kvMap, size),
+		size: size,
+
+		exit_chan:      make(chan bool),
 		ttl_check_time: 5,
 	}
+
 	for i := 0; i < int(size); i++ {
 		hashmap.maps[i].Kvs = make(map[string]value)
 	}
@@ -55,9 +59,39 @@ func (this *HashMap) Get(key string) (interface{}, error) {
 	}
 	if time.Now().Unix() > val.TTLat {
 		err = fmt.Errorf("key %s is not found", key)
-		delete(this.maps[idx].Kvs, key)
+		// important bug fix
+		// Get is locked by read lock, modify map is not allowed,
+		// thus don't delete key here, just leave it to expire goroutine TtlMonitor()
+		// delete(this.maps[idx].Kvs, key)
 	}
 	return val.Data, err
+}
+
+func (this *HashMap) GetString(key string) (string, error) {
+	val, err := this.Get(key)
+	if err != nil {
+		return "", fmt.Errorf("(nil)")
+	}
+	if _, ok := val.(string); !ok {
+		return "", fmt.Errorf("(error) WRONGTYPE Operation against a key holding the wrong kind of value")
+	}
+	return val.(string), nil
+}
+
+func (this *HashMap) GetList(key string, create bool) ([]string, error) {
+	val, err := this.Get(key)
+	if err != nil {
+		if create {
+			this.Put(key, []string{})
+			return []string{}, nil
+		} else {
+			return nil, fmt.Errorf("(nil)")
+		}
+	}
+	if _, ok := val.([]string); !ok {
+		return nil, fmt.Errorf("(error) WRONGTYPE Operation against a key holding the wrong kind of value")
+	}
+	return val.([]string), nil
 }
 
 func (this *HashMap) Put(key string, val interface{}) {
@@ -183,11 +217,17 @@ func (this *HashMap) GetTTL(key string) (ttl int64, err error) {
 		err = fmt.Errorf("key %s is not found", key)
 		return
 	}
+	// persistent
+	if val.TTLat == math.MaxInt64 {
+		return EXPIRE_FOREVER, nil
+	}
+	// expired
 	if time.Now().Unix() > val.TTLat {
 		err = fmt.Errorf("key %s is not found", key)
 		delete(this.maps[idx].Kvs, key)
 		return
 	}
+	// not expired
 	ttl = val.TTLat - time.Now().Unix()
 	return
 }
@@ -223,8 +263,14 @@ func (this *HashMap) TtlMonitor() {
 				}
 				this.maps[i].Lock.Unlock()
 			}
+		case <-this.exit_chan:
+			return
 		}
 	}
+}
+
+func (this *HashMap) StopTtlMonitor() {
+	this.exit_chan <- true
 }
 
 func (this *HashMap) FindWithLock(pattern string) (keys []string, err error) {

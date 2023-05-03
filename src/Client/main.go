@@ -11,15 +11,16 @@ import (
 	"strings"
 )
 
+var setCmds = []string{"SET", "GET", "DEL", "MSET", "EXPIRE", "TTL", "KEYS", "PERSIST",
+	"LPUSH", "RPUSH", "LPOP", "RPOP", "LINDEX", "LLEN", "LRANGE"}
+var selectCmds = []string{"SELECT"}
+
+var db_id int = 0
 var prompt = "Gedis"
-var setCmds = []string{"SET", "GET", "DEL", "MSET", "EXPIRE", "TTL", "KEYS", "PERSIST"}
-var dbCmds = []string{"SELECT"}
-var listCmds = []string{"LPUSH", "RPUSH", "LPOP", "RPOP", "LINDEX", "LLEN", "LRANGE"}
 
 func reader(conn net.Conn) {
 	msg_packer := znet.NewDataPack()
 	cmd_packer := server.NewCmdPack()
-	db_id := 0
 	for {
 		fmt.Printf("%s[%d]> ", prompt, db_id)
 		buf := make([]byte, msg_packer.GetHeadLen())
@@ -70,7 +71,7 @@ func writer(conn net.Conn) {
 			}
 		}
 		if !valid {
-			for _, v := range dbCmds {
+			for _, v := range selectCmds {
 				if string(cmd[0]) == v {
 					valid = true
 					msg_id = 1
@@ -79,17 +80,8 @@ func writer(conn net.Conn) {
 			}
 		}
 		if !valid {
-			for _, v := range listCmds {
-				if string(cmd[0]) == v {
-					valid = true
-					msg_id = 2
-					break
-				}
-			}
-		}
-		if !valid {
 			fmt.Printf("invalid command: %s\n", cmd[0])
-			fmt.Printf("%s", prompt)
+			fmt.Printf("%s[%d]> ", prompt, db_id)
 			continue
 		}
 		cmd_packed := cmd_packer.PackCmd(cmd)
