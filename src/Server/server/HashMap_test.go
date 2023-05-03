@@ -94,8 +94,6 @@ func Test4(t *testing.T) {
 	m := server.NewHashMap(256)
 	// 生成一些key-value pair
 	k_vs := make(map[string]string)
-	lock := sync.Mutex{}
-	lock_cpy := sync.Mutex{}
 	for i := 0; i < 100000; i++ {
 		key := fmt.Sprintf("key%d", i)
 		val := fmt.Sprintf("value%d", i)
@@ -122,9 +120,7 @@ func Test4(t *testing.T) {
 				m.Locks(keys, true)
 				for _, k := range keys {
 					m.Put(k, k_vs_cpy[k])
-					lock.Lock()
 					delete(k_vs_cpy, k)
-					lock.Unlock()
 				}
 				m.Unlocks(keys, true)
 			}
@@ -154,9 +150,7 @@ func Test4(t *testing.T) {
 					if val.(string) != k_vs_cpy[k] {
 						t.Error("Test4 failed")
 					}
-					lock_cpy.Lock()
 					delete(k_vs_cpy, k)
-					lock_cpy.Unlock()
 				}
 				m.Unlocks(keys, false)
 			}
