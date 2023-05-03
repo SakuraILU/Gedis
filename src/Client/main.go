@@ -12,8 +12,9 @@ import (
 )
 
 var prompt = "Gedis"
-var validCmds = []string{"SET", "GET", "DEL", "MSET", "EXPIRE", "TTL", "KEYS", "PERSIST"}
-var validDbCmds = []string{"SELECT"}
+var setCmds = []string{"SET", "GET", "DEL", "MSET", "EXPIRE", "TTL", "KEYS", "PERSIST"}
+var dbCmds = []string{"SELECT"}
+var listCmds = []string{"LPUSH", "RPUSH", "LPOP", "RPOP", "LINDEX", "LLEN", "LRANGE"}
 
 func reader(conn net.Conn) {
 	msg_packer := znet.NewDataPack()
@@ -62,17 +63,26 @@ func writer(conn net.Conn) {
 		// 检查命令是否合法, 在validCmds中
 		msg_id := 0
 		valid := false
-		for _, v := range validCmds {
+		for _, v := range setCmds {
 			if string(cmd[0]) == v {
 				valid = true
 				break
 			}
 		}
 		if !valid {
-			for _, v := range validDbCmds {
+			for _, v := range dbCmds {
 				if string(cmd[0]) == v {
 					valid = true
 					msg_id = 1
+					break
+				}
+			}
+		}
+		if !valid {
+			for _, v := range listCmds {
+				if string(cmd[0]) == v {
+					valid = true
+					msg_id = 2
 					break
 				}
 			}

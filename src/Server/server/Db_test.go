@@ -20,7 +20,7 @@ func TestDb(t *testing.T) {
 	if err != nil {
 		t.Error("TestDb failed")
 	}
-	if val.(string) != "value" {
+	if string(val) != "value" {
 		t.Error("TestDb failed")
 	}
 	// DEL command
@@ -60,7 +60,7 @@ func TestDb2(t *testing.T) {
 			for {
 				val, err := db.Get(getCmds[i][1:])
 				if err == nil {
-					if val.(string) != "value"+strconv.Itoa(i) {
+					if string(val) != "value"+strconv.Itoa(i) {
 						t.Error("TestDb2 failed")
 					}
 					break
@@ -115,7 +115,7 @@ func TestDb3(t *testing.T) {
 		if err != nil {
 			t.Error("TestDb3 failed")
 		}
-		if val.(string) != "value"+strconv.Itoa(i) {
+		if string(val) != "value"+strconv.Itoa(i) {
 			t.Error("TestDb3 failed")
 		}
 	}

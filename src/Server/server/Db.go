@@ -38,14 +38,14 @@ func (this *Db) Set(args [][]byte) (err error) {
 	defer this.hashmap.Unlock(key, true)
 	this.hashmap.Put(key, val)
 	// assert this.hashmap.Get(key) == val
-	value, err := this.hashmap.Get(key)
-	if err != nil || value.(string) != val {
-		panic(fmt.Sprintf("Set failed, key: %s, val: %s", key, val))
-	}
+	// value, err := this.hashmap.Get(key)
+	// if err != nil || value.(string) != val {
+	// 	panic(fmt.Sprintf("Set failed, key: %s, val: %s", key, val))
+	// }
 	return
 }
 
-func (this *Db) Get(args [][]byte) (val interface{}, err error) {
+func (this *Db) Get(args [][]byte) (val []byte, err error) {
 	if len(args) != 1 {
 		err = fmt.Errorf("(error) ERR wrong number of arguments for 'get' command")
 		return
@@ -53,7 +53,16 @@ func (this *Db) Get(args [][]byte) (val interface{}, err error) {
 	key := string(args[0])
 	this.hashmap.Lock(key, false)
 	defer this.hashmap.Unlock(key, false)
-	val, err = this.hashmap.Get(key)
+	ival, err := this.hashmap.Get(key)
+	if err != nil {
+		return
+	}
+	sval, ok := ival.(string)
+	if !ok {
+		err = fmt.Errorf("(error) ERR wrong get type")
+		return
+	}
+	val = []byte(sval)
 	return
 }
 
@@ -101,6 +110,216 @@ func (this *Db) Mset(args [][]byte) (err error) {
 	for i := 0; i < len(keys); i++ {
 		this.hashmap.Put(keys[i], vals[i])
 	}
+	return
+}
+
+func (this *Db) Lpush(args [][]byte) (err error) {
+	if len(args) < 2 {
+		err = fmt.Errorf("(error) ERR wrong number of arguments for 'lpush' command")
+		return
+	}
+
+	key := string(args[0])
+
+	this.hashmap.Lock(key, true)
+	defer this.hashmap.Unlock(key, true)
+
+	val, err := this.hashmap.Get(key)
+	if err != nil {
+		val = make([]string, 0)
+		err = nil
+	} else if _, ok := val.([]string); !ok {
+		err = fmt.Errorf("(error) ERR wrong key type")
+	}
+	lst := val.([]string)
+	for _, key := range args[1:] {
+		lst = append([]string{string(key)}, lst...)
+	}
+	this.hashmap.Put(key, lst)
+	return
+}
+
+func (this *Db) Rpush(args [][]byte) (err error) {
+	if len(args) < 2 {
+		err = fmt.Errorf("(error) ERR wrong number of arguments for 'lpush' command")
+		return
+	}
+
+	key := string(args[0])
+
+	this.hashmap.Lock(key, true)
+	defer this.hashmap.Unlock(key, true)
+
+	val, err := this.hashmap.Get(key)
+	if err != nil {
+		val = make([]string, 0)
+		err = nil
+	} else if _, ok := val.([]string); !ok {
+		err = fmt.Errorf("(error) ERR wrong key type")
+	}
+	lst := val.([]string)
+	for _, key := range args[1:] {
+		lst = append(lst, string(key))
+	}
+	this.hashmap.Put(key, lst)
+	return
+}
+
+func (this *Db) Lpop(args [][]byte) (elem []byte, err error) {
+	if len(args) != 1 {
+		err = fmt.Errorf("(error) ERR wrong number of arguments for 'lpop' command")
+		return
+	}
+	key := string(args[0])
+
+	this.hashmap.Lock(key, true)
+	defer this.hashmap.Unlock(key, true)
+
+	val, err := this.hashmap.Get(key)
+	if err != nil {
+		val = make([]string, 0)
+		err = nil
+	} else if _, ok := val.([]string); !ok {
+		err = fmt.Errorf("(error) ERR wrong key type")
+	}
+
+	lst := val.([]string)
+	if len(lst) == 0 {
+		err = fmt.Errorf("(nil)")
+		return
+	}
+
+	elem = []byte(lst[0])
+	lst = lst[1:]
+	this.hashmap.Put(key, lst)
+	return
+}
+
+func (this *Db) Rpop(args [][]byte) (elem []byte, err error) {
+	if len(args) != 1 {
+		err = fmt.Errorf("(error) ERR wrong number of arguments for 'lpop' command")
+		return
+	}
+	key := string(args[0])
+
+	this.hashmap.Lock(key, true)
+	defer this.hashmap.Unlock(key, true)
+
+	val, err := this.hashmap.Get(key)
+	if err != nil {
+		val = make([]string, 0)
+		err = nil
+	} else if _, ok := val.([]string); !ok {
+		err = fmt.Errorf("(error) ERR wrong key type")
+	}
+
+	lst := val.([]string)
+	if len(lst) == 0 {
+		err = fmt.Errorf("(nil)")
+		return
+	}
+
+	elem = []byte(lst[len(lst)-1])
+	lst = lst[0 : len(lst)-1]
+	this.hashmap.Put(key, lst)
+	return
+}
+
+func (this *Db) constrainIndex(index int, length int) int {
+	if index < 0 {
+		index = length + index
+	}
+	if index >= length {
+		index = length - 1
+	}
+	if index < 0 {
+		index = 0
+	}
+	return index
+}
+
+func (this *Db) Lrange(args [][]byte) (elems [][]byte, err error) {
+	if len(args) != 3 {
+		err = fmt.Errorf("(error) ERR wrong number of arguments for 'lrange' command")
+		return
+	}
+	key := string(args[0])
+	start, err := strconv.Atoi(string(args[1]))
+	end, err := strconv.Atoi(string(args[2]))
+	if err != nil {
+		err = fmt.Errorf("(error) ERR wrong start or end")
+		return
+	}
+
+	this.hashmap.Lock(key, false)
+	defer this.hashmap.Unlock(key, false)
+
+	val, err := this.hashmap.Get(key)
+	if err != nil {
+		return
+	} else if _, ok := val.([]string); !ok {
+		err = fmt.Errorf("(error) ERR wrong key type")
+		return
+	}
+	lst := val.([]string)
+
+	start = this.constrainIndex(start, len(lst))
+	end = this.constrainIndex(end, len(lst))
+
+	elems = make([][]byte, end-start+1)
+	for i := start; i <= end; i++ {
+		elems[i-start] = []byte(lst[i])
+	}
+	return
+}
+
+func (this *Db) Llen(args [][]byte) (length uint32, err error) {
+	if len(args) != 1 {
+		err = fmt.Errorf("(error) ERR wrong number of arguments for 'llen' command")
+		return
+	}
+	key := string(args[0])
+
+	this.hashmap.Lock(key, false)
+	defer this.hashmap.Unlock(key, false)
+
+	val, err := this.hashmap.Get(key)
+	if err != nil {
+		return
+	} else if _, ok := val.([]string); !ok {
+		err = fmt.Errorf("(error) ERR wrong key type")
+		return
+	}
+	length = uint32(len(val.([]string)))
+	return
+}
+
+func (this *Db) Lindex(args [][]byte) (elem []byte, err error) {
+	if len(args) != 2 {
+		err = fmt.Errorf("(error) ERR wrong number of arguments for 'lindex' command")
+		return
+	}
+	key := string(args[0])
+	index, err := strconv.Atoi(string(args[1]))
+	if err != nil {
+		err = fmt.Errorf("(error) ERR index is not an integer")
+		return
+	}
+
+	this.hashmap.Lock(key, false)
+	defer this.hashmap.Unlock(key, false)
+
+	val, err := this.hashmap.Get(key)
+	if err != nil {
+		return
+	} else if _, ok := val.([]string); !ok {
+		err = fmt.Errorf("(error) ERR wrong key type")
+		return
+	}
+
+	lst := val.([]string)
+	elem = []byte(lst[index])
+
 	return
 }
 

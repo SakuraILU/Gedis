@@ -1,6 +1,9 @@
 package server
 
-import "gedis/src/Server/siface"
+import (
+	"fmt"
+	"gedis/src/Server/siface"
+)
 
 type DbManager struct {
 	dbs []siface.IDb
@@ -11,7 +14,7 @@ func NewDbManager() *DbManager {
 		dbs: make([]siface.IDb, 16),
 	}
 	for i := 0; i < 16; i++ {
-		db_mgr.dbs[i] = NewDb(string(i))
+		db_mgr.dbs[i] = NewDb(fmt.Sprint(i))
 	}
 	return db_mgr
 }

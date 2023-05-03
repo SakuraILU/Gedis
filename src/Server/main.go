@@ -11,6 +11,7 @@ func main() {
 	gedis_server := znet.NewServer()
 	gedis_server.AddRounter(0, server.NewSetRouter())
 	gedis_server.AddRounter(1, server.NewDbRouter(db_mgr))
+	gedis_server.AddRounter(2, server.NewListRouter())
 	gedis_server.SetOnConnStart(func(conn ziface.IConnection) {
 		conn.SetProperty("db", db_mgr.GetDb(0))
 	})
