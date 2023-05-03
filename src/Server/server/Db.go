@@ -29,6 +29,7 @@ func NewDb(name string) *Db {
 
 func (this *Db) Open() error {
 	this.handler = make(map[string](func([]string) []string))
+	// string
 	this.handler["SET"] = this.set
 	this.handler["GET"] = this.get
 	this.handler["DEL"] = this.del
@@ -37,6 +38,7 @@ func (this *Db) Open() error {
 	this.handler["PERSIST"] = this.persist
 	this.handler["TTL"] = this.ttl
 	this.handler["KEYS"] = this.keys
+	// list
 	this.handler["LPUSH"] = this.lpush
 	this.handler["RPUSH"] = this.rpush
 	this.handler["LPOP"] = this.lpop
@@ -44,6 +46,17 @@ func (this *Db) Open() error {
 	this.handler["LLEN"] = this.llen
 	this.handler["LINDEX"] = this.lindex
 	this.handler["LRANGE"] = this.lrange
+	// zset
+	this.handler["ZADD"] = this.zadd
+	this.handler["ZREM"] = this.zrem
+	this.handler["ZCARD"] = this.zcard
+	this.handler["ZRANGE"] = this.zrange
+	this.handler["ZRANGEBYSCORE"] = this.zrangebyscore
+	this.handler["ZCOUNT"] = this.zcount
+	this.handler["ZRANK"] = this.zrank
+	this.handler["ZSCORE"] = this.zscore
+	// TODO: hashmap
+	// TODO: set
 
 	go this.hashmap.TtlMonitor()
 
@@ -387,9 +400,13 @@ func (this *Db) lrange(args []string) (res []string) {
 	}
 	key := args[0]
 	start, err := strconv.Atoi(args[1])
+	if err != nil {
+		res[0] = "(error) ERR value is not an integer or out of range"
+		return
+	}
 	end, err := strconv.Atoi(args[2])
 	if err != nil {
-		err = fmt.Errorf("(error) ERR value is not an integer or out of range")
+		res[0] = "(error) ERR value is not an integer or out of range"
 		return
 	}
 
@@ -456,5 +473,274 @@ func (this *Db) lindex(args []string) (res []string) {
 
 	index = this.constrainIndex(index, len(lst))
 	res[0] = lst[index]
+	return
+}
+
+func (this *Db) zadd(args []string) (res []string) {
+	res = make([]string, 1)
+	if len(args) < 3 || (len(args)-1)%2 != 0 {
+		res[0] = "(error) ERR wrong number of arguments for 'zadd' command"
+		return
+	}
+
+	key := args[0]
+	score_keys := args[1:]
+	this.hashmap.Lock(key, true)
+	defer this.hashmap.Unlock(key, true)
+
+	zset, err := this.hashmap.GetZset(key, true)
+	if err != nil {
+		res[0] = err.Error()
+		return
+	}
+
+	// check score validation
+	for i := 0; i < len(score_keys); i = i + 2 {
+		_, err := strconv.ParseFloat(score_keys[i], 64)
+		if err != nil {
+			res[0] = "(error) ERR value is not a valid float"
+			return
+		}
+	}
+
+	anum := 0
+	for i := 0; i < len(score_keys); i = i + 2 {
+		score, _ := strconv.ParseFloat(score_keys[i], 64)
+		zset.Add(score, score_keys[i+1])
+		anum++
+	}
+	this.hashmap.Put(key, zset)
+
+	res[0] = fmt.Sprintf("(integer) %d", anum)
+	return
+}
+
+func (this *Db) zrem(args []string) (res []string) {
+	res = make([]string, 1)
+	if len(args) < 2 {
+		res[0] = "(error) ERR wrong number of arguments for 'zrem' command"
+		return
+	}
+	key := args[0]
+	this.hashmap.Lock(key, true)
+	defer this.hashmap.Unlock(key, true)
+
+	zset, err := this.hashmap.GetZset(key, true)
+	if err != nil {
+		res[0] = err.Error()
+		return
+	}
+
+	dnum := 0
+	keys2rm := args[1:]
+	for _, key := range keys2rm {
+		if err := zset.Remove(key); err == nil {
+			dnum++
+		}
+	}
+
+	this.hashmap.Put(key, zset)
+
+	res[0] = fmt.Sprintf("(integer) %d", dnum)
+	return
+}
+
+func (this *Db) zcard(args []string) (res []string) {
+	res = make([]string, 1)
+	if len(args) != 1 {
+		res[0] = "(error) ERR wrong number of arguments for 'zcard' command"
+		return
+	}
+
+	key := args[0]
+	this.hashmap.Lock(key, false)
+	defer this.hashmap.Unlock(key, false)
+
+	zset, err := this.hashmap.GetZset(key, false)
+	if err != nil {
+		res[0] = err.Error()
+		return
+	}
+
+	res[0] = fmt.Sprintf("(integer) %d", zset.GetSize())
+	return
+}
+
+func (this *Db) zrange(args []string) (res []string) {
+	res = make([]string, 0)
+	if len(args) != 3 {
+		res = append(res, "(error) ERR wrong number of arguments for 'zrange' command")
+		return
+	}
+
+	key := args[0]
+	start, err := strconv.Atoi(args[1])
+	if err != nil {
+		res = append(res, "(error) ERR value is not an integer or out of range")
+		return
+	}
+	end, err := strconv.Atoi(args[2])
+	if err != nil {
+		res = append(res, "(error) ERR value is not an integer or out of range")
+		return
+	}
+
+	this.hashmap.Lock(key, false)
+	defer this.hashmap.Unlock(key, false)
+
+	zset, err := this.hashmap.GetZset(key, false)
+	if err != nil {
+		res = append(res, err.Error())
+		return
+	}
+
+	start = this.constrainIndex(start, int(zset.GetSize()))
+	end = this.constrainIndex(end, int(zset.GetSize()))
+	entries := zset.GetRangeByRank(uint32(start), uint32(end))
+	if len(entries) == 0 {
+		res = append(res, "(empty array)")
+	}
+	for _, entry := range entries {
+		res = append(res, entry.Key)
+	}
+
+	return
+}
+
+func (this *Db) zrangebyscore(args []string) (res []string) {
+	res = make([]string, 0)
+	if len(args) != 3 {
+		res = append(res, "(error) ERR wrong number of arguments for 'zrangebyscore' command")
+		return
+	}
+
+	key := args[0]
+	this.hashmap.Lock(key, false)
+	defer this.hashmap.Unlock(key, false)
+
+	zset, err := this.hashmap.GetZset(key, false)
+	if err != nil {
+		res = append(res, err.Error())
+		return
+	}
+
+	start, err := strconv.ParseFloat(args[1], 64)
+	if err != nil {
+		res = append(res, "(error) ERR value is not an float or out of range")
+		return
+	}
+	end, err := strconv.ParseFloat(args[2], 64)
+	if err != nil {
+		res = append(res, "(error) ERR value is not an float or out of range")
+		return
+	}
+
+	entries := zset.GetRangeByScore(start, end)
+	if len(entries) == 0 {
+		res = append(res, "(empty array)")
+	}
+	for _, entry := range entries {
+		res = append(res, entry.Key)
+	}
+
+	return
+}
+
+func (this *Db) zcount(args []string) (res []string) {
+	res = make([]string, 1)
+	if len(args) != 3 {
+		res[0] = "(error) ERR wrong number of arguments for 'zcount' command"
+		return
+	}
+
+	key := args[0]
+	start, err := strconv.Atoi(args[1])
+	if err != nil {
+		res[0] = "(error) ERR value is not an integer or out of range"
+		return
+	}
+	end, err := strconv.Atoi(args[2])
+	if err != nil {
+		res[0] = "(error) ERR value is not an integer or out of range"
+		return
+	}
+
+	this.hashmap.Lock(key, false)
+	defer this.hashmap.Unlock(key, false)
+
+	zset, err := this.hashmap.GetZset(key, false)
+	if err != nil {
+		res = append(res, err.Error())
+		return
+	}
+
+	start = this.constrainIndex(start, int(zset.GetSize()))
+	end = this.constrainIndex(end, int(zset.GetSize()))
+	entries := zset.GetRangeByRank(uint32(start), uint32(end))
+
+	res[0] = fmt.Sprintf("(integer) %d", len(entries))
+
+	return
+}
+
+func (this *Db) zrank(args []string) (res []string) {
+	res = make([]string, 1)
+	if len(args) != 2 {
+		res[0] = "(error) ERR wrong number of arguments for 'zrank' command"
+		return
+	}
+
+	key := args[0]
+	member := args[1]
+
+	this.hashmap.Lock(key, false)
+	defer this.hashmap.Unlock(key, false)
+
+	zset, err := this.hashmap.GetZset(key, false)
+	if err != nil {
+		res = append(res, err.Error())
+		return
+	}
+
+	rank, err := zset.GetRank(member)
+	if err != nil {
+		res[0] = "(nil)"
+		return
+	}
+
+	res[0] = fmt.Sprintf("(integer) %d", rank)
+
+	return
+}
+
+func (this *Db) zscore(args []string) (res []string) {
+	res = make([]string, 1)
+	if len(args) != 2 {
+		res[0] = "(error) ERR wrong number of arguments for 'zscore' command"
+		return
+	}
+
+	key := args[0]
+	member := args[1]
+
+	this.hashmap.Lock(key, false)
+	defer this.hashmap.Unlock(key, false)
+
+	zset, err := this.hashmap.GetZset(key, false)
+	if err != nil {
+		res = append(res, err.Error())
+		return
+	}
+
+	score, err := zset.GetScore(member)
+	if err != nil {
+		res[0] = "(nil)"
+		return
+	}
+
+	// The -1 as the third parameter tells the strconv.FormatFloat() to print the fewest digits necessary to accurately represent the float.
+	// see: https://stackoverflow.com/questions/31289409/format-a-float-to-n-decimal-places-and-no-trailing-zeros
+	res[0] = fmt.Sprintf("(float) %s", strconv.FormatFloat(score, 'f', -1, 64))
+
 	return
 }

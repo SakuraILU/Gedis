@@ -12,7 +12,8 @@ import (
 )
 
 var setCmds = []string{"SET", "GET", "DEL", "MSET", "EXPIRE", "TTL", "KEYS", "PERSIST",
-	"LPUSH", "RPUSH", "LPOP", "RPOP", "LINDEX", "LLEN", "LRANGE"}
+	"LPUSH", "RPUSH", "LPOP", "RPOP", "LINDEX", "LLEN", "LRANGE",
+	"ZADD", "ZCARD", "ZREM", "ZRANGE", "ZRANGEBYSCORE", "ZCOUNT", "ZRANK", "ZSCORE"}
 var selectCmds = []string{"SELECT"}
 
 var db_id int = 0

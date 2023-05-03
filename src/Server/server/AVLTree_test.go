@@ -13,7 +13,7 @@ func TestAvl1(t *testing.T) {
 	// generate and add some (score, key) pair
 	num := 1000
 	for i := 0; i < num; i++ {
-		tree.Add(float32(i), "key"+fmt.Sprint(i))
+		tree.Add(float64(i), "key"+fmt.Sprint(i))
 	}
 	// get size
 	if tree.GetSize() != uint32(num) {
@@ -26,7 +26,7 @@ func TestAvl1(t *testing.T) {
 		if err != nil {
 			t.Error("TestAvl1 failed")
 		}
-		if score != float32(i) {
+		if score != float64(i) {
 			t.Error("TestAvl1 failed")
 		}
 	}
@@ -39,7 +39,7 @@ func TestAvl2(t *testing.T) {
 	num := 1000
 	dnum := 300 // delete [0:dnum)
 	for i := 0; i < num; i++ {
-		tree.Add(float32(i), "key"+fmt.Sprint(i))
+		tree.Add(float64(i), "key"+fmt.Sprint(i))
 	}
 	// remove a subset of (score, key) pair
 	for i := 0; i < dnum; i++ {
@@ -59,7 +59,7 @@ func TestAvl2(t *testing.T) {
 		if err != nil {
 			t.Error("TestAvl2 failed")
 		}
-		if score != float32(i) {
+		if score != float64(i) {
 			t.Error("TestAvl2 failed")
 		}
 	}
@@ -85,7 +85,7 @@ func TestAvl3(t *testing.T) {
 	num := 1000
 	dnum := 300 // delete [0:dnum)
 	for i := 0; i < num; i++ {
-		tree.Add(float32(i), "key"+fmt.Sprint(i))
+		tree.Add(float64(i), "key"+fmt.Sprint(i))
 	}
 	// remove a subset of (score, key) pair
 	for i := 0; i < dnum; i++ {
@@ -133,13 +133,10 @@ func TestAvl4(t *testing.T) {
 	// generate and add some (score, key) pair
 	num := 1000
 	for i := 0; i < num; i++ {
-		tree.Add(float32(i), "key"+fmt.Sprint(i))
+		tree.Add(float64(i), "key"+fmt.Sprint(i))
 	}
 	// get range
-	keys, err := tree.GetRangeByRank(0, uint32(num)+100) // test: larger than actual range limit..
-	if err != nil {
-		t.Error("TestAvl4 failed")
-	}
+	keys := tree.GetRangeByRank(0, uint32(num)+100) // test: larger than actual range limit..
 	if len(keys) != num {
 		t.Error("TestAvl4 failed")
 	}
@@ -157,13 +154,10 @@ func TestAvl5(t *testing.T) {
 	// generate and add some (score, key) pair
 	num := 1000
 	for i := 0; i < num; i++ {
-		tree.Add(float32(i)/float32(num), "key"+fmt.Sprint(i)) // rerange to [0,1]
+		tree.Add(float64(i)/float64(num), "key"+fmt.Sprint(i)) // rerange to [0,1]
 	}
 	// get range
-	keys, err := tree.GetRangeByScore(0, 5) // test: larger than actual range limit..
-	if err != nil {
-		t.Error("TestAvl5 failed")
-	}
+	keys := tree.GetRangeByScore(0, 5) // test: larger than actual range limit..
 	if len(keys) != num {
 		t.Error("TestAvl5 failed")
 	}
@@ -180,7 +174,7 @@ func TestAvl6(t *testing.T) {
 	// generate and add some (score, key) pair
 	num := 1000
 	for i := 0; i < num; i++ {
-		tree.Add(float32(i), "key"+fmt.Sprint(i))
+		tree.Add(float64(i), "key"+fmt.Sprint(i))
 	}
 	// get size
 	if tree.GetSize() != uint32(num) {
@@ -192,14 +186,14 @@ func TestAvl6(t *testing.T) {
 		if err != nil {
 			t.Error("TestAvl6 failed")
 		}
-		if score != float32(i) {
+		if score != float64(i) {
 			t.Error("TestAvl6 failed")
 		}
 	}
 
 	// add again with different score
 	for i := 0; i < num; i++ {
-		tree.Add(2*float32(i), "key"+fmt.Sprint(i))
+		tree.Add(2*float64(i), "key"+fmt.Sprint(i))
 	}
 	// get size
 	if tree.GetSize() != uint32(num) {
@@ -212,7 +206,7 @@ func TestAvl6(t *testing.T) {
 		if err != nil {
 			t.Error("TestAvl6 failed")
 		}
-		if score != 2*float32(i) {
+		if score != 2*float64(i) {
 			t.Error("TestAvl6 failed")
 		}
 	}
@@ -226,22 +220,19 @@ func TestAvl7(t *testing.T) {
 	dnum := 256
 	// add in reverse order
 	for i := num - 1; i >= 0; i-- {
-		tree.Add(float32(i), "key"+fmt.Sprint(i))
+		tree.Add(float64(i), "key"+fmt.Sprint(i))
 	}
 	// add in order
 	for i := 0; i < num; i++ {
-		tree.Add(float32(i), "key"+fmt.Sprint(i))
+		tree.Add(float64(i), "key"+fmt.Sprint(i))
 	}
 	// add in disorder
 	perm := rand.Perm(num)
 	for i := 0; i < num; i++ {
-		tree.Add(float32(perm[i]), "key"+fmt.Sprint(perm[i]))
+		tree.Add(float64(perm[i]), "key"+fmt.Sprint(perm[i]))
 	}
 	// get range
-	keys, err := tree.GetRangeByRank(0, uint32(num)+100) // test: larger than actual range limit..
-	if err != nil {
-		t.Error("TestAvl7 failed")
-	}
+	keys := tree.GetRangeByRank(0, uint32(num)+100) // test: larger than actual range limit..
 	fmt.Printf("length of key is %d\n", len(keys))
 	if len(keys) != num {
 		t.Error("TestAvl7 failed")
@@ -258,10 +249,7 @@ func TestAvl7(t *testing.T) {
 		tree.Remove("key" + fmt.Sprint(i))
 	}
 	// get range
-	keys, err = tree.GetRangeByRank(0, uint32(num)+100) // test: larger than actual range limit..
-	if err != nil {
-		t.Error("TestAvl7 failed")
-	}
+	keys = tree.GetRangeByRank(0, uint32(num)+100) // test: larger than actual range limit..
 	if len(keys) != num-dnum {
 		fmt.Printf("len is %d", len(keys))
 		t.Error("TestAvl7 failed")
@@ -275,13 +263,10 @@ func TestAvl7(t *testing.T) {
 	// add [0, num] in disorder again
 	perm = rand.Perm(num)
 	for i := 0; i < num; i++ {
-		tree.Add(float32(perm[i]), "key"+fmt.Sprint(perm[i]))
+		tree.Add(float64(perm[i]), "key"+fmt.Sprint(perm[i]))
 	}
 	// get range
-	keys, err = tree.GetRangeByRank(0, uint32(num)+100) // test: larger than actual range limit..
-	if err != nil {
-		t.Error("TestAvl7 failed")
-	}
+	keys = tree.GetRangeByRank(0, uint32(num)+100) // test: larger than actual range limit..
 	if len(keys) != num {
 		t.Error("TestAvl7 failed")
 	}
@@ -300,7 +285,7 @@ func TestAvl8(t *testing.T) {
 	num := 1000
 	perm := rand.Perm(num)
 	for i := 0; i < num; i++ {
-		tree.Add(float32(perm[i]), "key"+fmt.Sprint(perm[i]))
+		tree.Add(float64(perm[i]), "key"+fmt.Sprint(perm[i]))
 	}
 	// get size
 	if tree.GetSize() != uint32(num) {
@@ -312,7 +297,7 @@ func TestAvl8(t *testing.T) {
 		if err != nil {
 			t.Error("TestAvl8 failed")
 		}
-		if score != float32(i) {
+		if score != float64(i) {
 			t.Error("TestAvl8 failed")
 		}
 	}
@@ -340,10 +325,7 @@ func TestAvl8(t *testing.T) {
 		t.Error("TestAvl8 failed")
 	}
 	// get range [0, num)
-	keys, err := tree.GetRangeByRank(0, uint32(num)+100) // test: larger than actual range limit..
-	if err != nil {
-		t.Error("TestAvl8 failed")
-	}
+	keys := tree.GetRangeByRank(0, uint32(num)+100) // test: larger than actual range limit..
 	if len(keys) != num-dnum {
 		t.Error("TestAvl8 failed")
 	}
@@ -354,10 +336,7 @@ func TestAvl8(t *testing.T) {
 		}
 	}
 	// get range by score should also be in order
-	keys, err = tree.GetRangeByScore(float32(0), float32(num)+100) // test: larger than actual range limit..
-	if err != nil {
-		t.Error("TestAvl8 failed")
-	}
+	keys = tree.GetRangeByScore(float64(0), float64(num)+100) // test: larger than actual range limit..
 	if len(keys) != num-dnum {
 		t.Error("TestAvl8 failed")
 	}
@@ -383,17 +362,14 @@ func TestAvl8(t *testing.T) {
 		apos = append(apos, num)
 	}
 	for i := 0; i < anum; i++ {
-		tree.Add(float32(dpos[apos[i]]), "key"+fmt.Sprint(dpos[apos[i]]))
+		tree.Add(float64(dpos[apos[i]]), "key"+fmt.Sprint(dpos[apos[i]]))
 	}
 	// get size
 	if tree.GetSize() != uint32(num+anum-dnum) {
 		t.Error("TestAvl8 failed")
 	}
 	// get range [0, num)
-	keys, err = tree.GetRangeByRank(0, uint32(num)+100) // test: larger than actual range limit..
-	if err != nil {
-		t.Error("TestAvl8 failed")
-	}
+	keys = tree.GetRangeByRank(0, uint32(num)+100) // test: larger than actual range limit..
 	if len(keys) != num+anum-dnum {
 		t.Error("TestAvl8 failed")
 	}
@@ -413,11 +389,11 @@ func TestAvl9(t *testing.T) {
 	num := 1000
 	perm := rand.Perm(num)
 	for i := 0; i < num; i++ {
-		tree.Add(float32(perm[i]), "key"+fmt.Sprint(perm[i]))
+		tree.Add(float64(perm[i]), "key"+fmt.Sprint(perm[i]))
 	}
 	perm = rand.Perm(num) // random add again, for fun
 	for i := 0; i < num; i++ {
-		tree.Add(float32(perm[i]), "key"+fmt.Sprint(perm[i]))
+		tree.Add(float64(perm[i]), "key"+fmt.Sprint(perm[i]))
 	}
 	// get size
 	if tree.GetSize() != uint32(num) {
@@ -429,7 +405,7 @@ func TestAvl9(t *testing.T) {
 		if err != nil {
 			t.Error("TestAvl9 failed")
 		}
-		if score != float32(i) {
+		if score != float64(i) {
 			t.Error("TestAvl9 failed")
 		}
 	}
@@ -437,10 +413,7 @@ func TestAvl9(t *testing.T) {
 	// get range [ar, br)
 	ar := 200
 	br := 400
-	keys, err := tree.GetRangeByRank(uint32(ar), uint32(br))
-	if err != nil {
-		t.Error("TestAvl9 failed")
-	}
+	keys := tree.GetRangeByRank(uint32(ar), uint32(br))
 	if len(keys) != br-ar+1 {
 		t.Error("TestAvl9 failed")
 	}
@@ -452,10 +425,7 @@ func TestAvl9(t *testing.T) {
 		}
 	}
 	// get range by score should also be in order
-	keys, err = tree.GetRangeByScore(float32(ar), float32(br))
-	if err != nil {
-		t.Error("TestAvl9 failed")
-	}
+	keys = tree.GetRangeByScore(float64(ar), float64(br))
 	if len(keys) != br-ar+1 {
 		t.Error("TestAvl9 failed")
 	}

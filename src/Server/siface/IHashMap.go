@@ -11,6 +11,7 @@ type IHashMap interface {
 	Get(key string) (val interface{}, err error)
 	GetString(key string) (val string, err error)
 	GetList(key string, create bool) (val []string, err error)
+	GetZset(key string, create bool) (val IAVLTree, err error)
 	FindWithLock(pattern string) (keys []string, err error)
 
 	SetTTL(key string, time int64) error

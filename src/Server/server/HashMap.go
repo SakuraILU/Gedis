@@ -2,6 +2,7 @@ package server
 
 import (
 	"fmt"
+	"gedis/src/Server/siface"
 	"math"
 	"path/filepath"
 	"sort"
@@ -82,7 +83,6 @@ func (this *HashMap) GetList(key string, create bool) ([]string, error) {
 	val, err := this.Get(key)
 	if err != nil {
 		if create {
-			this.Put(key, []string{})
 			return []string{}, nil
 		} else {
 			return nil, fmt.Errorf("(nil)")
@@ -92,6 +92,21 @@ func (this *HashMap) GetList(key string, create bool) ([]string, error) {
 		return nil, fmt.Errorf("(error) WRONGTYPE Operation against a key holding the wrong kind of value")
 	}
 	return val.([]string), nil
+}
+
+func (this *HashMap) GetZset(key string, create bool) (siface.IAVLTree, error) {
+	val, err := this.Get(key)
+	if err != nil {
+		if create {
+			return NewAvlTree(), nil
+		} else {
+			return nil, fmt.Errorf("(nil)")
+		}
+	}
+	if _, ok := val.(siface.IAVLTree); !ok {
+		return nil, fmt.Errorf("(error) WRONGTYPE Operation against a key holding the wrong kind of value")
+	}
+	return val.(siface.IAVLTree), nil
 }
 
 func (this *HashMap) Put(key string, val interface{}) {

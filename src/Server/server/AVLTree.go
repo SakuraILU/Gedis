@@ -16,7 +16,7 @@ func max(a int, b int) int {
 }
 
 type avlNode struct {
-	Score  float32
+	Score  float64
 	Key    string
 	Left   *avlNode
 	Right  *avlNode
@@ -24,7 +24,7 @@ type avlNode struct {
 	Size   uint32
 }
 
-func NewAvlNode(score float32, key string) *avlNode {
+func NewAvlNode(score float64, key string) *avlNode {
 	return &avlNode{Score: score, Key: key, Left: nil, Right: nil, Height: 1, Size: 1}
 }
 
@@ -95,7 +95,7 @@ func (this *AVLTree) r_rotate(node *avlNode) *avlNode {
 	return l_node
 }
 
-func (this *AVLTree) Add(score float32, key string) {
+func (this *AVLTree) Add(score float64, key string) {
 	if this.root == nil {
 		this.root = &avlNode{Score: score, Key: key}
 		return
@@ -155,7 +155,7 @@ func (this *AVLTree) balance(curroot *avlNode) *avlNode {
 	return curroot
 }
 
-func (this *AVLTree) add(score float32, key string, curroot *avlNode) *avlNode {
+func (this *AVLTree) add(score float64, key string, curroot *avlNode) *avlNode {
 	if curroot == nil {
 		return NewAvlNode(score, key)
 	}
@@ -238,23 +238,24 @@ func (this *AVLTree) GetSize() uint32 {
 	return this.root.Size
 }
 
-func (this *AVLTree) GetScore(key string) (score float32, err error) {
+func (this *AVLTree) GetScore(key string) (score float64, err error) {
 	return this.getScore(key, this.root)
 }
 
-func (this *AVLTree) getScore(key string, curroot *avlNode) (score float32, err error) {
+func (this *AVLTree) getScore(key string, curroot *avlNode) (score float64, err error) {
+	if curroot == nil {
+		return -1, fmt.Errorf("%s is not found", key)
+	}
+
 	if strings.Compare(key, curroot.Key) == 0 {
 		return curroot.Score, nil
 	}
-	if curroot.Left != nil {
-		if score, err = this.getScore(key, curroot.Left); err == nil {
-			return score, err
-		}
+
+	if score, err = this.getScore(key, curroot.Left); err == nil {
+		return score, err
 	}
-	if curroot.Right != nil {
-		if score, err = this.getScore(key, curroot.Right); err == nil {
-			return score, err
-		}
+	if score, err = this.getScore(key, curroot.Right); err == nil {
+		return score, err
 	}
 
 	return -1, fmt.Errorf("%s is not found", key)
@@ -268,38 +269,31 @@ func (this *AVLTree) GetRank(key string) (rank uint32, err error) {
 }
 
 func (this *AVLTree) getRank(key string, curroot *avlNode) (rank uint32, err error) {
+	if curroot == nil {
+		return math.MaxUint32, fmt.Errorf("%s is not found", key)
+	}
+
 	var currank uint32 = 0
 	if curroot.Left != nil {
 		currank = curroot.Left.Size
 	}
+
 	if strings.Compare(key, curroot.Key) == 0 {
 		return currank, nil
 	}
 
-	if curroot.Left != nil {
-		if rank, err = this.getRank(key, curroot.Left); err == nil {
-			return rank, err
-		}
+	if rank, err = this.getRank(key, curroot.Left); err == nil {
+		return rank, err
 	}
-	if curroot.Right != nil {
-		if rank, err = this.getRank(key, curroot.Right); err == nil {
-			return currank + (rank + 1), err
-		}
+	if rank, err = this.getRank(key, curroot.Right); err == nil {
+		return rank + (currank + 1), err
 	}
 
 	return math.MaxUint32, fmt.Errorf("%s is not found", key)
 }
 
-func (this *AVLTree) GetRangeByRank(start, end uint32) (entries []siface.SetEntry, err error) {
-	if this.root == nil {
-		return nil, fmt.Errorf("tree is empty")
-	}
-
-	entries = this.getRangeByRank(int(start), int(end), this.root)
-	if len(entries) == 0 {
-		err = fmt.Errorf("empty array")
-	}
-	return entries, err
+func (this *AVLTree) GetRangeByRank(start, end uint32) (entries []siface.SetEntry) {
+	return this.getRangeByRank(int(start), int(end), this.root)
 }
 
 func (this *AVLTree) getRangeByRank(start, end int, curroot *avlNode) (entries []siface.SetEntry) {
@@ -327,19 +321,11 @@ func (this *AVLTree) getRangeByRank(start, end int, curroot *avlNode) (entries [
 	return
 }
 
-func (this *AVLTree) GetRangeByScore(start, end float32) (entries []siface.SetEntry, err error) {
-	if this.root == nil {
-		return nil, fmt.Errorf("tree is empty")
-	}
-
-	entries = this.getRangeByScore(start, end, this.root)
-	if len(entries) == 0 {
-		err = fmt.Errorf("empty array")
-	}
-	return entries, err
+func (this *AVLTree) GetRangeByScore(start, end float64) (entries []siface.SetEntry) {
+	return this.getRangeByScore(start, end, this.root)
 }
 
-func (this *AVLTree) getRangeByScore(start, end float32, curroot *avlNode) (entries []siface.SetEntry) {
+func (this *AVLTree) getRangeByScore(start, end float64, curroot *avlNode) (entries []siface.SetEntry) {
 	if curroot == nil {
 		return []siface.SetEntry{}
 	}
