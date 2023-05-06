@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"gedis/src/Server/siface"
 	"math"
-	"path/filepath"
 	"sort"
 	"sync"
 	"time"
@@ -264,7 +263,7 @@ func (this *HashMap) Persist(key string) (err error) {
 	return
 }
 
-func (this *HashMap) TtlMonitor() {
+func (this *HashMap) StartTtlMonitor() {
 	ticker := time.Tick(time.Duration(this.ttl_check_time) * time.Second)
 	for {
 		select {
@@ -288,18 +287,31 @@ func (this *HashMap) StopTtlMonitor() {
 	this.exit_chan <- true
 }
 
-func (this *HashMap) FindWithLock(pattern string) (keys []string, err error) {
+func (this *HashMap) Foreach(f func(key string, val interface{}, TTLat int64)) {
 	for idx := 0; idx < int(this.size); idx++ {
 		this.maps[idx].Lock.RLock()
 		for k, v := range this.maps[idx].Kvs {
 			if time.Now().Unix() > v.TTLat {
 				continue // use RLock...so can't delete this key, just ignore
 			}
-			if ismatch, _ := filepath.Match(pattern, k); ismatch {
-				keys = append(keys, k)
-			}
+			f(k, v.Data, v.TTLat)
 		}
 		this.maps[idx].Lock.RUnlock()
 	}
-	return
 }
+
+// func (this *HashMap) FindWithLock(pattern string) (keys []string, err error) {
+// 	for idx := 0; idx < int(this.size); idx++ {
+// 		this.maps[idx].Lock.RLock()
+// 		for k, v := range this.maps[idx].Kvs {
+// 			if time.Now().Unix() > v.TTLat {
+// 				continue // use RLock...so can't delete this key, just ignore
+// 			}
+// 			if ismatch, _ := filepath.Match(pattern, k); ismatch {
+// 				keys = append(keys, k)
+// 			}
+// 		}
+// 		this.maps[idx].Lock.RUnlock()
+// 	}
+// 	return
+// }

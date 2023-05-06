@@ -12,11 +12,11 @@ type IHashMap interface {
 	GetString(key string) (val string, err error)
 	GetList(key string, create bool) (val []string, err error)
 	GetZset(key string, create bool) (val IAVLTree, err error)
-	FindWithLock(pattern string) (keys []string, err error)
+	Foreach(func(key string, val interface{}, TTLat int64))
 
 	SetTTL(key string, time int64) error
 	GetTTL(key string) (int64, error)
 	Persist(key string) error
-	TtlMonitor()
+	StartTtlMonitor()
 	StopTtlMonitor()
 }

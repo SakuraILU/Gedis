@@ -3,6 +3,7 @@ package server
 import (
 	"fmt"
 	"gedis/src/Server/siface"
+	"path/filepath"
 	"strconv"
 )
 
@@ -49,7 +50,7 @@ func (this *Engine) Start() {
 	// TODO: hashmap
 	// TODO: set
 
-	go this.hashmap.TtlMonitor()
+	go this.hashmap.StartTtlMonitor()
 }
 
 func (this *Engine) Stop() {
@@ -62,6 +63,10 @@ func (this *Engine) Handle(cmd []string) []string {
 		return []string{"(error) ERR unknown command '" + cmd[0] + "'"}
 	}
 	return handler(cmd[1:])
+}
+
+func (this *Engine) Foreach(f func(key string, val interface{}, TTL int64)) {
+	this.hashmap.Foreach(f)
 }
 
 func (this *Engine) set(args []string) (res []string) {
@@ -220,21 +225,19 @@ func (this *Engine) ttl(args []string) (res []string) {
 }
 
 func (this *Engine) keys(args []string) (res []string) {
-	res = make([]string, 1)
 	if len(args) != 1 {
+		res = make([]string, 1)
 		res[0] = "(error) ERR wrong number of arguments for 'keys' command"
 		return
 	}
 	pattern := args[0]
-	keys, err := this.hashmap.FindWithLock(pattern)
-	if err != nil {
-		res[0] = "(error) ERR wrong number of arguments for 'keys' command"
-		return
-	}
-	res = make([]string, len(keys))
-	for i, key := range keys {
-		res[i] = key
-	}
+	// keys, err := this.hashmap.FindWithLock(pattern)
+	res = make([]string, 0)
+	this.hashmap.Foreach(func(key string, val interface{}, TTLat int64) {
+		if ismatch, _ := filepath.Match(pattern, key); ismatch {
+			res = append(res, key)
+		}
+	})
 	return
 }
 
@@ -364,18 +367,18 @@ func (this *Engine) constrainIndex(index int, length int) int {
 func (this *Engine) lrange(args []string) (res []string) {
 	res = make([]string, 0)
 	if len(args) != 3 {
-		res[0] = "(error) ERR wrong number of arguments for 'lrange' command"
+		res = append(res, "(error) ERR wrong number of arguments for 'lrange' command")
 		return
 	}
 	key := args[0]
 	start, err := strconv.Atoi(args[1])
 	if err != nil {
-		res[0] = "(error) ERR value is not an integer or out of range"
+		res = append(res, "(error) ERR value is not an integer or out of range")
 		return
 	}
 	end, err := strconv.Atoi(args[2])
 	if err != nil {
-		res[0] = "(error) ERR value is not an integer or out of range"
+		res = append(res, "(error) ERR value is not an integer or out of range")
 		return
 	}
 
@@ -390,7 +393,7 @@ func (this *Engine) lrange(args []string) (res []string) {
 
 	start = this.constrainIndex(start, len(lst))
 	end = this.constrainIndex(end, len(lst))
-	for i := start; i < end; i++ {
+	for i := start; i <= end; i++ {
 		res = append(res, lst[i])
 	}
 	return

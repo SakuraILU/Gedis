@@ -12,6 +12,6 @@ type IAVLTree interface {
 
 	GetScore(key string) (score float64, err error)
 	GetRank(key string) (rank uint32, err error)
-	GetRangeByRank(start, end uint32) (keys []SetEntry)
-	GetRangeByScore(start, end float64) (keys []SetEntry)
+	GetRangeByRank(start, end uint32) (entries []SetEntry)
+	GetRangeByScore(start, end float64) (entries []SetEntry)
 }

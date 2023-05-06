@@ -5,4 +5,5 @@ type IEngine interface {
 	Stop()
 
 	Handle([]string) []string
+	Foreach(func(key string, val interface{}, TTL int64))
 }
