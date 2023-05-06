@@ -160,7 +160,7 @@ func (this *HashMap) Locks(keys []string, write bool) {
 	}
 	// 将idxs中的idx按照从小到大的顺序排序
 	idxs_sorted := make([]uint32, 0, len(idxset))
-	for idx, _ := range idxset {
+	for idx := range idxset {
 		idxs_sorted = append(idxs_sorted, idx)
 	}
 	sort.Slice(idxs_sorted, func(i, j int) bool {
@@ -189,7 +189,7 @@ func (this *HashMap) Unlocks(keys []string, write bool) {
 	// 将idxs中的idx按照从小到大的顺序排序
 	idxs_sorted := make([]uint32, 0, len(idxset))
 	// fmt.Println("idxs_sorted: ")
-	for idx, _ := range idxset {
+	for idx := range idxset {
 		// fmt.Printf("idx: %d ", idx)
 		idxs_sorted = append(idxs_sorted, idx)
 	}

@@ -33,11 +33,11 @@ func Test2(t *testing.T) {
 		t.Error("Test2 failed")
 	}
 	m.Del("key2")
-	val, err = m.Get("key2")
+	_, err = m.Get("key2")
 	if err == nil {
 		t.Error("Test2 failed")
 	}
-	val, err = m.Get("key1")
+	_, err = m.Get("key1")
 	if err != nil {
 		t.Error("Test2 failed")
 	}
@@ -72,7 +72,7 @@ func Test3(t *testing.T) {
 				k_vs_cpy[k] = v
 			}
 			for len(k_vs_cpy) > 0 {
-				for k, _ := range k_vs_cpy {
+				for k := range k_vs_cpy {
 					m.Lock(k, false)
 					val, err := m.Get(k)
 					if err != nil {
@@ -111,7 +111,7 @@ func Test4(t *testing.T) {
 			for len(k_vs_cpy) > 0 {
 				// 取出10个key
 				keys := make([]string, 0, 10)
-				for k, _ := range k_vs_cpy {
+				for k := range k_vs_cpy {
 					keys = append(keys, k)
 					if len(keys) == 10 {
 						break
@@ -135,7 +135,7 @@ func Test4(t *testing.T) {
 			for len(k_vs_cpy) > 0 {
 				// 取出10个key
 				keys := make([]string, 0, 10)
-				for k, _ := range k_vs_cpy {
+				for k := range k_vs_cpy {
 					keys = append(keys, k)
 					if len(keys) == 10 {
 						break
@@ -196,7 +196,7 @@ func Test5(t *testing.T) {
 			for len(k_vs_cpy) > 0 {
 				// 取出10个key
 				keys := make([]string, 0, 10)
-				for k, _ := range k_vs_cpy {
+				for k := range k_vs_cpy {
 					keys = append(keys, k)
 					if len(keys) == 10 {
 						break
@@ -221,7 +221,7 @@ func Test5(t *testing.T) {
 			for len(k_vs_del) > 0 {
 				// 取出10个key
 				keys := make([]string, 0, 10)
-				for k, _ := range k_vs_del {
+				for k := range k_vs_del {
 					keys = append(keys, k)
 					if len(keys) == 10 {
 						break
@@ -251,7 +251,7 @@ func Test5(t *testing.T) {
 	}
 	// 除了最后kv_dels[last]以外的k-v应该都被删除了
 	for i := 0; i < dnum-1; i++ {
-		for k, _ := range k_vs_dels[i] {
+		for k := range k_vs_dels[i] {
 			_, err := m.Get(k)
 			if err == nil {
 				t.Error("Test5 failed")
